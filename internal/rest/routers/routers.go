@@ -2,21 +2,24 @@ package routers
 
 import (
 	"auth/internal/rest/handlers"
+	"auth/pkg/middleware"
 	"github.com/gin-gonic/gin"
 )
 
 type Routers struct {
-	handlers handlers.Handlers
+	Handlers handlers.Handlers
 }
 
 func (r *Routers) SetupRoutes(app *gin.Engine) {
 	authRouter := app.Group("/auth")
 	{
-		authRouter.POST("/register", r.handlers.Register)
-		authRouter.POST("/login", r.handlers.Login)
-		authRouter.POST("/forgotPassword", r.handlers.ForgotPassword)
-		authRouter.POST("/logout", r.handlers.Logout)
-		authRouter.DELETE("/deleteAccount", r.handlers.DeleteAccount)
-		authRouter.GET("/profile", r.handlers.Profile)
+		authRouter.POST("/register", r.Handlers.Register)                                               //+
+		authRouter.POST("/login", middleware.RequireAuthMiddleware, r.Handlers.Login)                   //+
+		authRouter.POST("/forgotPassword", r.Handlers.ForgotPassword)                                   //+
+		authRouter.POST("/resetPassword", r.Handlers.ResetPassword)                                     //
+		authRouter.POST("/checkVerificationCode", r.Handlers.CheckCode)                                 //+
+		authRouter.POST("/logout", middleware.RequireAuthMiddleware, r.Handlers.Logout)                 //+
+		authRouter.DELETE("/deleteAccount", middleware.RequireAuthMiddleware, r.Handlers.DeleteAccount) //+
+		authRouter.GET("/profile", middleware.RequireAuthMiddleware, r.Handlers.Profile)                //+
 	}
 }

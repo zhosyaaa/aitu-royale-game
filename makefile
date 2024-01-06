@@ -11,12 +11,13 @@ migratedown:
 	migrate -path  internal/db/migrations -database "postgresql://postgres:1079@localhost:5432/aituRoyale?sslmode=disable" -verbose down
 
 dropdb:
-	docker exec -it postgres15 dropdb -U postgres ecommerce
-
-proto:
-	protoc ./internal/proto/*.proto --go_out=. --go-grpc_out=.
+	docker exec -it postgres15 dropdb -U postgres aituRoyale
+#
+#proto:
+#	protoc ./internal/proto/*.proto --go_out=. --go-grpc_out=.
 
 redis:
-	docker run -d -p 6379:6379 --name my-redis-container -e REDIS_PASSWORD=myStrongPassword redis
+	docker run -d -p 6379:6379 --name my-redis-container redis
+
 
 .PHONY: postgres createdb dropdb

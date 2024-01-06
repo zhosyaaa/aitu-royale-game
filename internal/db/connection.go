@@ -12,25 +12,19 @@ import (
 var (
 	db     *gorm.DB
 	dbOnce sync.Once
-	dbConf config.Database
 )
 
-func InitializeDB(config config.Database) error {
-	dbConf = config
-	return initializeDB()
-}
-
-func initializeDB() error {
+func initializeDB(database config.Database) error {
 	var err error
 	dbOnce.Do(func() {
 		dbConnString := fmt.Sprintf(
 			"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
-			dbConf.User,
-			dbConf.Password,
-			dbConf.Host,
-			dbConf.Port,
-			dbConf.Name,
-			dbConf.Sslmode,
+			database.User,
+			database.Password,
+			database.Host,
+			database.Port,
+			database.Name,
+			database.Sslmode,
 		)
 		db, err = gorm.Open(postgres.Open(dbConnString), &gorm.Config{
 			SkipDefaultTransaction: true,
@@ -44,9 +38,10 @@ func initializeDB() error {
 	return err
 }
 
-func GetDBInstance() (*gorm.DB, error) {
+func GetDBInstance(database config.Database) (*gorm.DB, error) {
+	db = nil
 	if db == nil {
-		if err := initializeDB(); err != nil {
+		if err := initializeDB(database); err != nil {
 			return nil, err
 		}
 	}

@@ -59,8 +59,10 @@ func (ur *UserRepository) GetAllUsers() ([]models.User, error) {
 }
 
 func (ur *UserRepository) UpdateUser(user *models.User) error {
-	result := ur.db.Save(user)
-	return result.Error
+	if err := ur.db.Save(&user).Error; err != nil {
+		return err
+	}
+	return nil
 }
 
 func (ur *UserRepository) DeleteUser(id uint) error {
