@@ -11,12 +11,14 @@ type Claims struct {
 	Id    string `json:"id"`
 	Email string `json:"email"`
 	jwt.StandardClaims
+	UserType string `json:"userType"`
 }
 
-func CreateToken(id string, email string) (tokenString string, err error) {
+func CreateToken(id string, email string, userType string) (tokenString string, err error) {
 	claims := &Claims{
-		Id:    id,
-		Email: email,
+		Id:       id,
+		Email:    email,
+		UserType: userType,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 		},
@@ -29,9 +31,9 @@ func CreateToken(id string, email string) (tokenString string, err error) {
 	}
 }
 
-func VerifyToken(token string) (string, string, error) {
+func VerifyToken(token string) (string, string, string, error) {
 	if token == "" {
-		return "", "", errors.New("token is empty")
+		return "", "", "", errors.New("token is empty")
 	}
 	claims := &Claims{}
 	parsedToken, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
@@ -39,15 +41,15 @@ func VerifyToken(token string) (string, string, error) {
 	})
 	if err != nil {
 		if err == jwt.ErrSignatureInvalid {
-			return "", "", errors.New("signature is invalid")
+			return "", "", "", errors.New("signature is invalid")
 		}
-		return "", "", errors.New("token is invalid")
+		return "", "", "", errors.New("token is invalid")
 	}
 	if !parsedToken.Valid {
-		return "", "", errors.New("parsed token is invalid")
+		return "", "", "", errors.New("parsed token is invalid")
 	}
 	if claims == nil {
-		return "", "", errors.New("token claims are nil")
+		return "", "", "", errors.New("token claims are nil")
 	}
-	return claims.Id, claims.Email, nil
+	return claims.Id, claims.Email, claims.UserType, nil
 }

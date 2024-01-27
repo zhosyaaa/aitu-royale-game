@@ -2,7 +2,7 @@ package repository
 
 import (
 	"auth/internal/rest/models"
-	"gorm.io/gorm"
+	"database/sql"
 )
 
 type UserRepo interface {
@@ -16,61 +16,89 @@ type UserRepo interface {
 }
 
 type UserRepository struct {
-	db *gorm.DB
+	db *sql.DB
 }
 
-func NewUserRepository(db *gorm.DB) *UserRepository {
+func NewUserRepository(db *sql.DB) *UserRepository {
 	return &UserRepository{db}
 }
 
 func (ur *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
-	result := ur.db.First(&user, id)
-	if result.Error != nil {
-		return nil, result.Error
+	err := ur.db.QueryRow("SELECT * FROM users WHERE id = $1", id).Scan(
+		&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+	)
+	if err != nil {
+		return nil, err
 	}
 	return &user, nil
 }
 
 func (ur *UserRepository) GetUserByUsername(username string) (*models.User, error) {
 	var user models.User
-	result := ur.db.Where("username = ?", username).First(&user)
-	if result.Error != nil {
-		return nil, result.Error
+	err := ur.db.QueryRow("SELECT * FROM users WHERE username = $1", username).Scan(
+		&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+	)
+	if err != nil {
+		return nil, err
 	}
 	return &user, nil
 }
+
 func (ur *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	result := ur.db.Where("email = ?", email).First(&user)
-	if result.Error != nil {
-		return nil, result.Error
+	err := ur.db.QueryRow("SELECT * FROM users WHERE email = $1", email).Scan(
+		&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+	)
+	if err != nil {
+		return nil, err
 	}
 	return &user, nil
 }
 
 func (ur *UserRepository) GetAllUsers() ([]models.User, error) {
-	var users []models.User
-	result := ur.db.Find(&users)
-	if result.Error != nil {
-		return nil, result.Error
+	rows, err := ur.db.Query("SELECT * FROM users")
+	if err != nil {
+		return nil, err
 	}
+	defer rows.Close()
+
+	var users []models.User
+	for rows.Next() {
+		var user models.User
+		err := rows.Scan(
+			&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
+			&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+		)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, user)
+	}
+
 	return users, nil
 }
 
 func (ur *UserRepository) UpdateUser(user *models.User) error {
-	if err := ur.db.Save(&user).Error; err != nil {
-		return err
-	}
-	return nil
+	_, err := ur.db.Exec(
+		"UPDATE users SET username=$1, email=$2, password=$3, bank=$4, awards=$5 WHERE id=$6",
+		user.Username, user.Email, user.Password, user.Bank, user.Awards, user.ID,
+	)
+	return err
 }
 
 func (ur *UserRepository) DeleteUser(id uint) error {
-	result := ur.db.Delete(&models.User{}, id)
-	return result.Error
+	_, err := ur.db.Exec("DELETE FROM users WHERE id = $1", id)
+	return err
 }
 
 func (ur *UserRepository) CreateUser(user *models.User) error {
-	result := ur.db.Create(user)
-	return result.Error
+	_, err := ur.db.Exec(
+		"INSERT INTO users (created_at, updated_at, deleted_at, username, email, password, bank, awards) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+		user.CreatedAt, user.UpdatedAt, user.DeletedAt, user.Username, user.Email, user.Password, user.Bank, user.Awards,
+	)
+	return err
 }
