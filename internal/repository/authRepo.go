@@ -3,6 +3,7 @@ package repository
 import (
 	"auth/internal/rest/models"
 	"database/sql"
+	"fmt"
 )
 
 type UserRepo interface {
@@ -13,6 +14,7 @@ type UserRepo interface {
 	UpdateUser(user *models.User) error
 	DeleteUser(id uint) error
 	CreateUser(user *models.User) error
+	UpdateUserBalance(userID uint, newBalance int64) error
 }
 
 type UserRepository struct {
@@ -101,4 +103,12 @@ func (ur *UserRepository) CreateUser(user *models.User) error {
 		user.CreatedAt, user.UpdatedAt, user.DeletedAt, user.Username, user.Email, user.Password, user.Bank, user.Awards,
 	)
 	return err
+}
+func (repo *UserRepository) UpdateUserBalance(userID uint, newBalance int64) error {
+	query := "UPDATE users SET bank = $1 WHERE id = $2"
+	_, err := repo.db.Exec(query, newBalance, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update user balance: %v", err)
+	}
+	return nil
 }

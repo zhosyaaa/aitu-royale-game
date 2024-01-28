@@ -75,7 +75,7 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	gameRepo := repository.NewGameRepository(db)
 	authHandlers := handlers.NewAuthHandlers(userRepo, appConfig.Redis, appConfig.Email)
-	var gameHandlers = handlers.NewGameHandlers(*gameRepo)
+	var gameHandlers = handlers.NewGameHandlers(userRepo, *gameRepo)
 
 	r := gin.Default()
 	router := routers.NewRouters(*authHandlers, *gameHandlers)

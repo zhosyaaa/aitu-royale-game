@@ -46,19 +46,20 @@ type Hero struct {
 	CostElixir  int32     `json:"CostElixir,omitempty"`
 	DamageTower int32     `json:"DamageTower,omitempty"`
 	Speed       int32     `json:"Speed,omitempty"`
-	Price       int32     `json:"Price,omitempty"`
+	Price       int64     `json:"Price,omitempty"`
 }
 
 type Spell struct {
-	ID          uint      `json:"ID,omitempty"`
+	ID          uint      `json:"ID"`
 	CreatedAt   time.Time `json:"CreatedAt"`
 	UpdatedAt   time.Time `json:"UpdatedAt"`
 	DeletedAt   time.Time `json:"DeletedAt"`
-	Name        string    `json:"Name,omitempty"`
-	Description string    `json:"Description,omitempty"`
-	Area        int32     `json:"Area,omitempty"`
-	DamageType  string    `json:"DamageType,omitempty"`
-	Damage      int32     `json:"Damage,omitempty"`
+	Name        string    `json:"Name"`
+	Description string    `json:"Description"`
+	Area        int32     `json:"Area"`
+	DamageType  string    `json:"DamageType"`
+	Damage      int32     `json:"Damage"`
 	Duration    int64     `json:"Duration"`
-	Effect      string    `json:"Effect,omitempty"`
+	Effect      string    `json:"Effect"`
+	Price       int64     `json:"Price"`
 }

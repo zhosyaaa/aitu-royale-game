@@ -44,6 +44,5 @@ func (r *Routers) SetupRoutes(app *gin.Engine) {
 		gameRouter.GET("/get-my-deсk/:id", r.gameHandlers.GetMyDeck)
 		gameRouter.GET("/hero/:id", r.gameHandlers.GetHero)
 		gameRouter.GET("/spell/:id", r.gameHandlers.GetSpell)
-		gameRouter.GET("/get-random-deсk", r.gameHandlers.GetRandomDeck)
 	}
 }
