@@ -3,7 +3,7 @@ package helper
 import "errors"
 
 var (
-	ErrHeroNotFound  = errors.New("")
-	ErrSpellNotFound = errors.New("")
-	ErrDeckNotFound  = errors.New("")
+	ErrHeroNotFound  = errors.New("hero not found")
+	ErrSpellNotFound = errors.New("spell not found")
+	ErrDeckNotFound  = errors.New("deck not found")
 )

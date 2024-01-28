@@ -7,11 +7,16 @@ import (
 	"auth/internal/rest/handlers"
 	"auth/internal/rest/routers"
 	"auth/pkg/logger"
+	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"log"
+	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
+	"syscall"
+	"time"
 )
 
 func init() {
@@ -57,10 +62,12 @@ func initializeEmail() config.EmailConfig {
 	return emailConfig
 }
 
+var appConfig config.App
+
 func main() {
 	logger.InitLogger()
 
-	appConfig := config.App{
+	appConfig = config.App{
 		PORT:  os.Getenv("APP_PORT"),
 		DB:    initializeDB(),
 		Redis: initializeRedis(),
@@ -80,8 +87,51 @@ func main() {
 	r := gin.Default()
 	router := routers.NewRouters(*authHandlers, *gameHandlers)
 	router.SetupRoutes(r)
+	r.Use(rateLimitMiddleware())
 
-	if err := r.Run(":" + appConfig.PORT); err != nil {
+	server := &http.Server{
+		Addr:    ":" + appConfig.PORT,
+		Handler: r,
+	}
+
+	gracefulShutdown(server)
+}
+
+func rateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		rateLimit := time.Tick(time.Second)
+		select {
+		case <-rateLimit:
+			c.Next()
+		default:
+			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})
+			c.Abort()
+		}
+	}
+}
+
+func gracefulShutdown(server *http.Server) {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-stop
+		logger.GetLogger().Info("Server is shutting down...")
+
+		timeout := 5 * time.Second
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			logger.GetLogger().Fatal("Server shutdown error:", err)
+		}
+
+		logger.GetLogger().Info("Server has gracefully stopped")
+		os.Exit(0)
+	}()
+
+	logger.GetLogger().Info("Server is running on :" + appConfig.PORT)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		logger.GetLogger().Fatal("Error starting server:", err)
 	}
 }
