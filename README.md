@@ -114,6 +114,8 @@ GET: http://localhost:8080/app/game/hero/6
 GET: http://localhost:8080/app/game/spell/4
 GET: http://localhost:8080/app/game/get-my-spells
 GET: http://localhost:8080/app/game/get-my-heros
+
+GET: http://localhost:8080/app/game/get-all-heros?sortBy=speed&filterName=F&sortOrder=asc&page=1&pageSize=10
 - Buy hero and spell
 POST:http://localhost:8080/app/game/hero/6
 POST:http://localhost:8080/app/game/spell/2
