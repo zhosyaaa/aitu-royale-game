@@ -96,12 +96,12 @@ func main() {
 
 	gracefulShutdown(server)
 }
-
 func rateLimitMiddleware() gin.HandlerFunc {
+	limiter := time.Tick(time.Second)
+
 	return func(c *gin.Context) {
-		rateLimit := time.Tick(time.Second)
 		select {
-		case <-rateLimit:
+		case <-limiter:
 			c.Next()
 		default:
 			c.JSON(http.StatusTooManyRequests, gin.H{"error": "Rate limit exceeded"})

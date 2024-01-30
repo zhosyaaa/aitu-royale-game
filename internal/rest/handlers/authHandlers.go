@@ -9,6 +9,7 @@ import (
 	"auth/pkg/email"
 	"auth/pkg/logger"
 	"auth/pkg/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -41,28 +42,27 @@ func (h AuthHandlers) Register(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "The account is already registered"})
 		return
 	}
-
+	if user.Password == "qwerty123" && user.Email == "musabecova05@gmail.com" {
+		user.UserType = "ADMIN"
+	} else {
+		user.UserType = "USER"
+	}
+	fmt.Println(user.UserType)
 	hashedPassword, _ := utils.HashPassword(user.Password)
 	user.Password = hashedPassword
 
+	user.Bank = 10000
 	if err := h.Repo.CreateUser(&user); err != nil {
 		logger.GetLogger().Error("Failed to create user:", err)
 		context.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	var userType string
-	if user.Password == "qwerty123" && user.Email == "musabecova05@gmail.com" {
-		userType = "ADMIN"
-	} else {
-		userType = "USER"
-	}
-
-	signedToken, _ := utils.CreateToken(strconv.Itoa(int(user.ID)), user.Email, userType)
+	signedToken, _ := utils.CreateToken(strconv.Itoa(int(user.ID)), user.Email, user.UserType)
 	cookie := http.Cookie{
 		Name:     "jwt",
 		Value:    signedToken,
-		Path:     "/auth",
+		Path:     "/app",
 		Expires:  time.Now().Add(time.Hour * 24),
 		HttpOnly: true,
 	}
@@ -95,19 +95,26 @@ func (h AuthHandlers) Login(context *gin.Context) {
 		return
 	}
 
-	var userType string
 	if user.Password == "qwerty123" && user.Email == "musabecova05@gmail.com" {
-		userType = "ADMIN"
+		user.UserType = "ADMIN"
 	} else {
-		userType = "USER"
+		user.UserType = "USER"
 	}
 
-	token, err := utils.CreateToken(strconv.Itoa(int(user.ID)), user.Email, userType)
+	token, err := utils.CreateToken(strconv.Itoa(int(user.ID)), user.Email, user.UserType)
 	if err != nil {
 		logger.GetLogger().Error("Failed to create token:", err)
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create token", "data": token})
 		return
 	}
+	cookie := http.Cookie{
+		Name:     "jwt",
+		Value:    token,
+		Path:     "/app",
+		Expires:  time.Now().Add(time.Hour * 24),
+		HttpOnly: true,
+	}
+	http.SetCookie(context.Writer, &cookie)
 
 	logger.GetLogger().Info("User login successful")
 	context.JSON(http.StatusOK, gin.H{"token": token})
@@ -147,7 +154,7 @@ func (h AuthHandlers) Logout(context *gin.Context) {
 	cookie := http.Cookie{
 		Name:     "jwt",
 		Value:    "",
-		Path:     "/auth",
+		Path:     "/app",
 		Expires:  time.Now().Add(-time.Hour),
 		HttpOnly: true,
 	}
@@ -228,7 +235,7 @@ func (h AuthHandlers) DeleteAccount(context *gin.Context) {
 	cookie := http.Cookie{
 		Name:     "jwt",
 		Value:    "",
-		Path:     "/app/v1",
+		Path:     "/app",
 		Expires:  time.Now().Add(-time.Hour),
 		HttpOnly: true,
 	}

@@ -21,28 +21,73 @@ func NewGameHandlers(userRepo repository.UserRepo, gameRepo repository.GameRepos
 }
 
 func (h GameHandlers) AddHeroToDeck(context *gin.Context) {
-	deckID, err := strconv.ParseUint(context.Param("deckID"), 10, 64)
-	if err != nil {
-		logger.GetLogger().Error("Invalid deck ID format:", err)
+	var input struct {
+		DeckID uint `json:"deck_id"`
+		HeroID uint `json:"hero_id"`
+	}
 
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid deck ID format"})
+	if err := context.ShouldBindJSON(&input); err != nil {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input"})
 		return
 	}
-	heroID, err := strconv.ParseUint(context.Param("id"), 10, 64)
-	if err != nil {
-		logger.GetLogger().Error("Invalid spell ID format:", err)
-
-		context.JSON(http.StatusBadRequest, gin.H{"error": "Invalid spell ID format"})
-		return
-	}
-	updatedDecks, err := h.GameRepo.AddHeroToDeck(uint(deckID), uint(heroID))
-	if err != nil {
-		logger.GetLogger().Error("Failed to adding hero from deck:", err)
-		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to adding hero from deck"})
+	email, exists := context.Get("email")
+	if !exists {
+		logger.GetLogger().Error("User not authenticated")
+		context.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "User not authenticated"})
 		return
 	}
 
-	context.JSON(http.StatusOK, gin.H{"message": "Hero successfully added from deck", "decks": updatedDecks})
+	emailm, ok := email.(string)
+	if !ok {
+		logger.GetLogger().Error("Error while retrieving user ID")
+		context.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Error while retrieving user ID"})
+		return
+	}
+
+	user, err := h.UserRepo.GetUserByEmail(emailm)
+	if err != nil {
+		logger.GetLogger().Error("User not found:", err)
+		context.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "User not found"})
+		return
+	}
+
+	heroBought, err := h.GameRepo.HasUserBoughtHero(user.ID, input.HeroID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check if user has bought hero"})
+		return
+	}
+
+	if !heroBought {
+		context.JSON(http.StatusBadRequest, gin.H{"error": "User has not bought this hero"})
+		return
+	}
+	deck, err := h.GameRepo.GetDeckByID(input.DeckID)
+	if err != nil {
+		userID := user.ID
+		newDeck := models.Deck{
+			UserID: userID,
+		}
+
+		err := h.GameRepo.CreateDeck(&newDeck)
+		if err != nil {
+			context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create deck"})
+			return
+		}
+
+		deck, err = h.GameRepo.GetDeckByID(newDeck.ID)
+		if err != nil {
+			context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get created deck"})
+			return
+		}
+	}
+
+	updatedDecks, err := h.GameRepo.AddHeroToDeck(deck.ID, input.HeroID)
+	if err != nil {
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add hero to deck"})
+		return
+	}
+
+	context.JSON(http.StatusOK, gin.H{"decks": updatedDecks})
 }
 
 func (h GameHandlers) DeleteHeroToDeсk(context *gin.Context) {
@@ -291,26 +336,38 @@ func (h GameHandlers) BuySpell(context *gin.Context) {
 		context.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to update user's balance"})
 		return
 	}
+	if err := h.GameRepo.AddSpellToUser(user.ID, spell.ID); err != nil {
+		logger.GetLogger().Error("Failed to add spell to user's collection:", err)
+		context.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to add spell to user's collection"})
+		return
+	}
 	context.JSON(http.StatusOK, gin.H{"status": "success", "message": "Spell purchased successfully"})
 }
 func (h GameHandlers) CreateHero(context *gin.Context) {
 	logger.GetLogger().Info("Creating hero")
 
-	userType, exists := context.Get("userType")
+	email, exists := context.Get("email")
 	if !exists {
 		logger.GetLogger().Error("User not authenticated")
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		context.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "User not authenticated"})
 		return
 	}
 
-	userTypem, ok := userType.(string)
+	emailm, ok := email.(string)
 	if !ok {
-		logger.GetLogger().Error("Error while retrieving user type")
+		logger.GetLogger().Error("Failed to get user ID from context")
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 
-	if userTypem != "ADMIN" {
+	user, err := h.UserRepo.GetUserByEmail(emailm)
+	if err != nil {
+		logger.GetLogger().Error("Failed to get user ID from context")
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		return
+	}
+
+	if user.UserType != "ADMIN" {
 		logger.GetLogger().Warn("Not enough rights to create hero")
 		context.JSON(http.StatusForbidden, gin.H{"error": "Not enough rights to act"})
 		return
@@ -334,21 +391,28 @@ func (h GameHandlers) CreateHero(context *gin.Context) {
 func (h GameHandlers) CreateSpell(context *gin.Context) {
 	logger.GetLogger().Info("Creating spell")
 
-	userType, exists := context.Get("userType")
+	email, exists := context.Get("email")
 	if !exists {
 		logger.GetLogger().Error("User not authenticated")
-		context.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		context.JSON(http.StatusUnauthorized, gin.H{"status": "error", "message": "User not authenticated"})
 		return
 	}
 
-	userTypem, ok := userType.(string)
+	emailm, ok := email.(string)
 	if !ok {
-		logger.GetLogger().Error("Error while retrieving user type")
+		logger.GetLogger().Error("Failed to get user ID from context")
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
 
-	if userTypem != "ADMIN" {
+	user, err := h.UserRepo.GetUserByEmail(emailm)
+	if err != nil {
+		logger.GetLogger().Error("Failed to get user ID from context")
+		context.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		return
+	}
+
+	if user.UserType != "ADMIN" {
 		logger.GetLogger().Warn("Not enough rights to create spell")
 		context.JSON(http.StatusForbidden, gin.H{"error": "Not enough rights to act"})
 		return
@@ -369,7 +433,6 @@ func (h GameHandlers) CreateSpell(context *gin.Context) {
 
 	context.JSON(http.StatusCreated, gin.H{"spell": spell})
 }
-
 func (h GameHandlers) GetAllHeros(context *gin.Context) {
 	logger.GetLogger().Info("Fetching all heroes")
 

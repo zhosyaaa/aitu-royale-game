@@ -13,6 +13,7 @@ type GameRepo interface {
 	GetDeckByID(id uint) (models.Deck, error)
 	CreateSpell(spell *models.Spell) error
 	CreateHero(hero *models.Hero) error
+	CreateDeck(deck *models.Deck) error
 	AddHeroToUser(userID, heroID uint) error
 	AddSpellToUser(userID, spellID uint) error
 	AddHeroToDeck(deckID, heroID uint) ([]models.Deck, error)
@@ -25,6 +26,7 @@ type GameRepo interface {
 	GetAllHeros(sortBy, sortOrder, filterName string, page, pageSize int) ([]models.Hero, error)
 	GetMySpells(userID uint) ([]models.Spell, error)
 	GetMyHeros(userID uint) ([]models.Hero, error)
+	HasUserBoughtHero(userID, heroID uint) (bool, error)
 }
 
 type GameRepository struct {
@@ -33,6 +35,22 @@ type GameRepository struct {
 
 func NewGameRepository(db *sql.DB) *GameRepository {
 	return &GameRepository{db}
+}
+
+func (repo *GameRepository) HasUserBoughtHero(userID, heroID uint) (bool, error) {
+	query := `
+        SELECT COUNT(*)
+        FROM user_heros
+        WHERE user_id = $1 AND hero_id = $2
+    `
+
+	var count int
+	err := repo.db.QueryRow(query, userID, heroID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("failed to check if user has bought hero: %v", err)
+	}
+
+	return count > 0, nil
 }
 func (repo *GameRepository) GetSpellByID(id uint) (models.Spell, error) {
 	query := `
@@ -51,6 +69,7 @@ func (repo *GameRepository) GetSpellByID(id uint) (models.Spell, error) {
 		&spell.Damage,
 		&spell.Duration,
 		&spell.Effect,
+		&spell.Price,
 	)
 	if err == sql.ErrNoRows {
 		return models.Spell{}, errors.New("spell not found")
@@ -113,8 +132,8 @@ func (repo *GameRepository) GetDeckByID(id uint) (models.Deck, error) {
 }
 func (repo *GameRepository) CreateSpell(spell *models.Spell) error {
 	query := `
-		INSERT INTO spells (name, description, area, damage_type, damage, duration, effect)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO spells (name, description, area, damage_type, damage, duration, effect, price)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id
 	`
 
@@ -127,12 +146,14 @@ func (repo *GameRepository) CreateSpell(spell *models.Spell) error {
 		spell.Damage,
 		spell.Duration,
 		spell.Effect,
+		spell.Price,
 	).Scan(&spell.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create spell: %v", err)
 	}
 	return nil
 }
+
 func (repo *GameRepository) CreateHero(hero *models.Hero) error {
 	query := `
 		INSERT INTO heros (name, description, rarity, damage_type, effect, hitpoint, damage, cost_elixir, damage_tower, speed, price)
@@ -329,7 +350,6 @@ func (repo *GameRepository) DeleteSpellFromDeck(deckID, spellID uint) ([]models.
 
 	return updatedDecks, nil
 }
-
 func (repo *GameRepository) GetAllSpells(sortBy, sortOrder, filterName string, page, pageSize int) ([]models.Spell, error) {
 	if page <= 0 {
 		page = 1
@@ -339,11 +359,11 @@ func (repo *GameRepository) GetAllSpells(sortBy, sortOrder, filterName string, p
 	}
 
 	query := `
-		SELECT * FROM spells
-		WHERE ($3 = '' OR name ILIKE $3)
-		ORDER BY %s %s
-		LIMIT $4 OFFSET $5
-	`
+        SELECT * FROM spells
+        WHERE ($1 = '' OR name ILIKE $1)
+        ORDER BY %s %s
+        LIMIT $2 OFFSET $3
+    `
 
 	if sortBy == "" || (sortBy != "name" && sortBy != "damage") {
 		sortBy = "id"
@@ -354,7 +374,7 @@ func (repo *GameRepository) GetAllSpells(sortBy, sortOrder, filterName string, p
 
 	query = fmt.Sprintf(query, sortBy, sortOrder)
 
-	rows, err := repo.db.Query(query, sortBy, sortOrder, "%"+filterName+"%", pageSize, (page-1)*pageSize)
+	rows, err := repo.db.Query(query, "%"+filterName+"%", pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all spells: %v", err)
 	}
@@ -375,6 +395,7 @@ func (repo *GameRepository) GetAllSpells(sortBy, sortOrder, filterName string, p
 			&spell.Damage,
 			&spell.Duration,
 			&spell.Effect,
+			&spell.Price, // Add this line for the new 'price' field
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan spell: %v", err)
@@ -394,11 +415,11 @@ func (repo *GameRepository) GetAllHeros(sortBy, sortOrder, filterName string, pa
 	}
 
 	query := `
-		SELECT * FROM heros
-		WHERE ($3 = '' OR name ILIKE $3)
-		ORDER BY %s %s
-		LIMIT $4 OFFSET $5
-	`
+        SELECT * FROM heros
+        WHERE ($1 = '' OR name ILIKE $1)
+        ORDER BY %s %s
+        LIMIT $2 OFFSET $3
+    `
 
 	if sortBy == "" || (sortBy != "name" && sortBy != "damage" && sortBy != "speed") {
 		sortBy = "id"
@@ -409,7 +430,7 @@ func (repo *GameRepository) GetAllHeros(sortBy, sortOrder, filterName string, pa
 
 	query = fmt.Sprintf(query, sortBy, sortOrder)
 
-	rows, err := repo.db.Query(query, sortBy, sortOrder, "%"+filterName+"%", pageSize, (page-1)*pageSize)
+	rows, err := repo.db.Query(query, "%"+filterName+"%", pageSize, (page-1)*pageSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get all heros: %v", err)
 	}
@@ -435,6 +456,8 @@ func (repo *GameRepository) GetAllHeros(sortBy, sortOrder, filterName string, pa
 			&hero.Speed,
 			&hero.Price,
 		)
+		fmt.Println("test:", hero.ID, hero.DeletedAt, hero.Name)
+		fmt.Errorf("%e,errrorrrrrr", err)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan hero: %v", err)
 		}
@@ -443,9 +466,31 @@ func (repo *GameRepository) GetAllHeros(sortBy, sortOrder, filterName string, pa
 
 	return heros, nil
 }
+
+func (repo *GameRepository) CreateDeck(deck *models.Deck) error {
+	query := `
+        INSERT INTO decks (user_id, name, description)
+        VALUES ($1, $2, $3)
+        RETURNING id
+    `
+
+	err := repo.db.QueryRow(
+		query,
+		deck.UserID,
+		deck.Name,
+		deck.Description,
+	).Scan(&deck.ID)
+	if err != nil {
+		return fmt.Errorf("failed to create deck: %v", err)
+	}
+
+	return nil
+}
+
 func (repo *GameRepository) GetMySpells(userID uint) ([]models.Spell, error) {
 	query := `
-		SELECT s.* FROM spells s
+		SELECT s.id, s.created_at, s.updated_at, s.deleted_at, s.name, s.description, s.area, s.damage_type, s.damage, s.duration, s.effect
+		FROM spells s
 		JOIN user_spells us ON s.id = us.spell_id
 		WHERE us.user_id = $1
 	`

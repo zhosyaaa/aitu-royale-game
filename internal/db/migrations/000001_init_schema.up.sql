@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255),
     password VARCHAR(255),
     bank BIGINT,
-    awards INT
+    awards INT,
+    userType varchar(255)
 );
 
 CREATE TABLE IF NOT EXISTS heros (
@@ -39,7 +40,8 @@ CREATE TABLE IF NOT EXISTS spells (
     damage_type VARCHAR(255),
     damage INT,
     duration BIGINT,
-    effect VARCHAR(255)
+    effect VARCHAR(255),
+    price INT
 );
 
 CREATE TABLE IF NOT EXISTS decks (

@@ -1,7 +1,6 @@
-# Authentication Project
+# Game Project
 
-This project represents an authentication system built using Golang, Gin, GORM, and Redis.
-
+This project involves building a gaming application using Golang, Gin, and a PostgreSQL database.
 ## Installation and Running the Project
 
 ### Requirements
@@ -35,8 +34,7 @@ This project represents an authentication system built using Golang, Gin, GORM, 
 ## Main Functionalities
 - User Registration
 
-url: http://localhost:8080/auth/register
-body:
+POST: http://localhost:8080/app/auth/register
 ```
 {
 "username":"test",
@@ -46,8 +44,7 @@ body:
 ```
 
 - Authentication and Login
-url: http://localhost:8080/auth/register
-body:
+POST: http://localhost:8080/app/auth/register
 ```
 {
     "username":"test",
@@ -55,14 +52,13 @@ body:
 }
 ```
 - Password Reset
-url: http://localhost:8080/auth/forgotPassword
-body:
+POST: http://localhost:8080/app/auth/forgotPassword
 ```
 {
     "email":"zhake361@gmail.com"
 }
 ```
-url: http://localhost:8080/auth/checkVerificationCode
+POST: http://localhost:8080/app/auth/checkVerificationCode
 // the code from the mail
 ```
 {
@@ -70,7 +66,7 @@ url: http://localhost:8080/auth/checkVerificationCode
     "code":"636738" 
 }
 ```
-url: http://localhost:8080/auth/resetPassword
+POST: http://localhost:8080/app/auth/resetPassword
 ```
 {
     "email": "zhake361@gmail.com",
@@ -81,8 +77,49 @@ url: http://localhost:8080/auth/resetPassword
 - Fetching User Profile
 - Deleting an Account
 
+- Create Hero
+POST: http://localhost:8080/app/game/create-hero
+```{
+    "Name": "Iron Golem",
+    "Description": "A colossal golem crafted from sturdy iron, resistant to damage.",
+    "Rarity": "Rare",
+    "DamageType": "Melee",
+    "Effect": "High defense",
+    "Hitpoint": 350,
+    "Damage": 40,
+    "CostElixir": 8,
+    "DamageTower": 15,
+    "Speed": 1,
+    "Price": 450
+  }
+```
+- Create Spell
+POST: http://localhost:8080/app/game/create-spell
+```
+{
+    "Name": "Invisibility Cloak",
+    "Description": "Envelops the caster in an invisible cloak, making them undetectable to enemies.",
+    "Area": 0,
+    "DamageType": "None",
+    "Damage": 0,
+    "Duration": 15,
+    "Effect": "Invisibility",
+    "Price": 300
+}
+```
+- Getting hero and spell
+GET: http://localhost:8080/app/game/get-all-heros
+GET: http://localhost:8080/app/game/get-all-spells
+GET: http://localhost:8080/app/game/hero/6
+GET: http://localhost:8080/app/game/spell/4
+GET: http://localhost:8080/app/game/get-my-spells
+GET: http://localhost:8080/app/game/get-my-heros
+- Buy hero and spell
+POST:http://localhost:8080/app/game/hero/6
+POST:http://localhost:8080/app/game/spell/2
+- 
 ## Key Features and Considerations
-- Dependency injection for database and Redis interactions.
-- Use of JWT for authentication.
-- Request handling through Gin and routing via Routers.
-- Handling hashed passwords.
+- Dependency injection for database interactions.
+- RESTful API endpoints for managing spells, heroes, and decks.
+- Database migrations for easy setup and versioning
+- CRUD operations for spells, heroes, and decks.

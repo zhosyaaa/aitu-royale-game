@@ -29,7 +29,7 @@ func (ur *UserRepository) GetUserByID(id uint) (*models.User, error) {
 	var user models.User
 	err := ur.db.QueryRow("SELECT * FROM users WHERE id = $1", id).Scan(
 		&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
-		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards, &user.UserType,
 	)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (ur *UserRepository) GetUserByUsername(username string) (*models.User, erro
 	var user models.User
 	err := ur.db.QueryRow("SELECT * FROM users WHERE username = $1", username).Scan(
 		&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
-		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards, &user.UserType,
 	)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (ur *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
 	err := ur.db.QueryRow("SELECT * FROM users WHERE email = $1", email).Scan(
 		&user.ID, &user.CreatedAt, &user.UpdatedAt, &user.DeletedAt,
-		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards,
+		&user.Username, &user.Email, &user.Password, &user.Bank, &user.Awards, &user.UserType,
 	)
 	if err != nil {
 		return nil, err
@@ -99,8 +99,8 @@ func (ur *UserRepository) DeleteUser(id uint) error {
 
 func (ur *UserRepository) CreateUser(user *models.User) error {
 	_, err := ur.db.Exec(
-		"INSERT INTO users (created_at, updated_at, deleted_at, username, email, password, bank, awards) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
-		user.CreatedAt, user.UpdatedAt, user.DeletedAt, user.Username, user.Email, user.Password, user.Bank, user.Awards,
+		"INSERT INTO users (created_at, updated_at, deleted_at, username, email, password, bank, awards, userType) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+		user.CreatedAt, user.UpdatedAt, user.DeletedAt, user.Username, user.Email, user.Password, user.Bank, user.Awards, user.UserType,
 	)
 	return err
 }

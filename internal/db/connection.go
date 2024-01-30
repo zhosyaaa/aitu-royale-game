@@ -6,6 +6,9 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+
+	// Import the PostgreSQL driver
+	_ "github.com/lib/pq"
 )
 
 var (
@@ -16,8 +19,9 @@ var (
 func initializeDB(database config.Database) error {
 	var errInit error
 	dbOnce.Do(func() {
+		// Use the driver name "postgres" instead of "postgresql"
 		dbConnString := fmt.Sprintf(
-			"postgresql://%s:%s@%s:%s/%s?sslmode=%s",
+			"postgres://%s:%s@%s:%s/%s?sslmode=%s",
 			database.User,
 			database.Password,
 			database.Host,
@@ -25,6 +29,7 @@ func initializeDB(database config.Database) error {
 			database.Name,
 			database.Sslmode,
 		)
+		// Open the connection with the correct driver name
 		db, errInit = sql.Open("postgres", dbConnString)
 		if errInit != nil {
 			logger.GetLogger().Fatal("Error connecting to the database:", errInit)
